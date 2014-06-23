@@ -88,33 +88,38 @@ end
 -- Also, if you try to call Enable(false) on both the Escape and empty slot, it crashes the client
 -- So we set those slots to the previous button and disable them
 
+local HousingBarId = 7
+local ourDummyButton = 89 -- Actually the last usable button on the bar, Set Edit Mode
+local startOfHousingBar = 83 -- The id before the first used for the housing bar
+
 function LAS:HideShortcutBar()	
-	for index, button in ipairs(self.HousingActionBar.tActionBars[7]:FindChild("ActionBarContainer"):GetChildren()) do
+	for index, button in ipairs(self.HousingActionBar.tActionBars[HousingBarId]:FindChild("ActionBarContainer"):GetChildren()) do
 		local action = button:FindChild("ActionBarShortcutBtn")
 		SendVarToRover("action", action, 0)
 		if index < 7 then 
 			action:Enable(false)
 		else			
-			action:SetContentId(89)
+			action:SetContentId(ourDummyButton)
 			action:Enable(false)
 		end		
 	end
-	self.HousingActionBar:ShowWindow(7, false, 0)
+	-- And hide it
+	self.HousingActionBar:ShowWindow(HousingBarId, false, 7)
 end
 
 -- And then re-enable them before setting them to the appropriate actual slot
 function LAS:ShowShortcutBar()
-	for index, button in ipairs(self.HousingActionBar.tActionBars[7]:FindChild("ActionBarContainer"):GetChildren()) do
+	for index, button in ipairs(self.HousingActionBar.tActionBars[HousingBarId]:FindChild("ActionBarContainer"):GetChildren()) do
 		local action = button:FindChild("ActionBarShortcutBtn")		
 		if index < 7 then 
 			action:Enable(true)
 		else
-			action:SetContentId(89)
+			action:SetContentId(ourDummyButton)
 			action:Enable(true)
-			action:SetContentId(index + 83)			
+			action:SetContentId(startOfHousingBar + index)			
 		end		
 	end
-	self.HousingActionBar:ShowWindow(7, true, 7)
+	self.HousingActionBar:ShowWindow(HousingBarId, true, 7)
 end
 
 function LAS:SaveCurrentLAS()
