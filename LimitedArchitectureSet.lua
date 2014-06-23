@@ -40,61 +40,12 @@ function LAS:OnInitialize()
   	SendVarToRover("LAS", self)
 
   	self:RegisterEvent("SystemKeyDown")
-  	self:RegisterEvent("WindowKeyDown")
-
-  	self:BlockMenuItems()
 end
 
 local lastKeyDown, lastKeyDownAt, stickyEdit
 
 
--- We can't actually take over the LAS in a straighforward manner. If the LAS contains actions,
--- then they will fire, if the 1-8 key is hit. If, however, we temporarily clear the LAS, hitting
--- 1-8 will actually activate ctrl-1 to ctrl-8, which is all the housing guff. And we don't 
--- want that either. So, we put buffers into all the commands, to check if we've just hit the 
--- 1-8 keys, and if so, ignore doing the ctrl-1 to ctrl-8 items.
 
-function LAS:BlockMenuItems()
-	self:RawHook(Landscape, "OnHousingButtonLandscape")
-	self:RawHook(Remodel, "OnHousingButtonRemodel")
-	self:RawHook(Decorate, "OnHousingButtonOpenCrate")
-	self:RawHook(ListWindow, "OnHousingButtonList")
-	self:Hook(HousingLib, "SetEditMode")
-	self:RawHook(GameLib, "SupportStuck")
-end
-
-function LAS:OnHousingButtonLandscape(...)	
-	if lastKeyDown == 49 and os.time() - lastKeyDownAt < timeLimit then return end
-	return self.hooks[Landscape].OnHousingButtonLandscape(Landscape, ...)
-end
-
-function LAS:OnHousingButtonRemodel(...)
-	if lastKeyDown == 50 and os.time() - lastKeyDownAt < timeLimit then return end
-	return self.hooks[Remodel].OnHousingButtonRemodel(Remodel, ...)
-end
-
-function LAS:OnHousingButtonOpenCrate(...)
-	local _, bIsVendor = ...
-	if ((not bIsVendor and lastKeyDown == 51) or (bIsVendor and lastKeyDown == 52)) and os.time() - lastKeyDownAt < timeLimit then return end
-	return (self.hooks[Decorate]).OnHousingButtonOpenCrate(...)
-end
-
-function LAS:OnHousingButtonList()
-	if lastKeyDown == 53 and os.time() - lastKeyDownAt < timeLimit then return end
-	return self.hooks[ListWindow].OnHousingButtonList(ListWindow)
-end
-
-function LAS:SetEditMode(...)	
-	stickyEdit = ...
-	self.edit = ...
---	if lastKeyDown == 54 and os.time() - lastKeydownAt < timeLimit then return end
---	return self.hooks[HousingLib].SetEditMode(...)
-end
-
-function LAS:SupportStuck(...)
-	if lastKeyDown == 55 and os.time() - lastKeyDownAt < timeLimit then return end
-	return self.hooks[GameLib].SupportStuck(...)
-end
 
 
 function LAS:SystemKeyDown(...)
@@ -114,17 +65,56 @@ function LAS:WindowKeyDown(...)
 	self.debug(...)
 end
 
+
+
+
 function LAS:OnSlashCommand(cmd, argv)
 	local args = {}
+
+	local slash = {
+	["save"] = function() self:SaveCurrentLAS() end,
+	["restore"] = function() self:RestoreCurrentLAS() end,
+	["show"] = function() self:ShowShortcutBar() end,
+	["hide"] = function() self:HideShortcutBar() end
+}
+
 	for a in argv:gmatch("%S+") do
 		table.insert(args, a)
 	end
-	if args[1] == "save" then
-		return self:SaveCurrentLAS()
+	if slash[args[1]] then slash[args[1]]() end
+end
+
+-- We want to both hide and disable this floating menu, because we want to have full control of 1-8
+-- Also, if you try to call Enable(false) on both the Escape and empty slot, it crashes the client
+-- So we set those slots to the previous button and disable them
+
+function LAS:HideShortcutBar()	
+	for index, button in ipairs(self.HousingActionBar.tActionBars[7]:FindChild("ActionBarContainer"):GetChildren()) do
+		local action = button:FindChild("ActionBarShortcutBtn")
+		SendVarToRover("action", action, 0)
+		if index < 7 then 
+			action:Enable(false)
+		else			
+			action:SetContentId(89)
+			action:Enable(false)
+		end		
 	end
-	if args[1] == "restore" then
-		return self:RestoreCurrentLAS()
+	self.HousingActionBar:ShowWindow(7, false, 0)
+end
+
+-- And then re-enable them before setting them to the appropriate actual slot
+function LAS:ShowShortcutBar()
+	for index, button in ipairs(self.HousingActionBar.tActionBars[7]:FindChild("ActionBarContainer"):GetChildren()) do
+		local action = button:FindChild("ActionBarShortcutBtn")		
+		if index < 7 then 
+			action:Enable(true)
+		else
+			action:SetContentId(89)
+			action:Enable(true)
+			action:SetContentId(index + 83)			
+		end		
 	end
+	self.HousingActionBar:ShowWindow(7, true, 7)
 end
 
 function LAS:SaveCurrentLAS()
