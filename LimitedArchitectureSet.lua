@@ -17,7 +17,7 @@ local LAS = LimitedArchitectureSet
 
 local Landscape, Remodel, ListWindow, Decorate
 
-local timeLimit = 1
+local timeLimit = 2
 
 function LAS:OnInitialize()
 	local GeminiLogging = Apollo.GetPackage("Gemini:Logging-1.2").tPackage
@@ -30,6 +30,7 @@ function LAS:OnInitialize()
   	self.HousingButtons.Remodel = Apollo.GetAddon("HousingRemodel")
   	self.HousingButtons.List = Apollo.GetAddon("HousingListWindow")
   	self.HousingButtons.Decorate = Apollo.GetAddon("Housing")
+  	self.HousingActionBar = Apollo.GetAddon("ActionBarShortcut")
 
   	Landscape = self.HousingButtons.Landscape
   	Remodel = self.HousingButtons.Remodel
@@ -39,11 +40,12 @@ function LAS:OnInitialize()
   	SendVarToRover("LAS", self)
 
   	self:RegisterEvent("SystemKeyDown")
+  	self:RegisterEvent("WindowKeyDown")
 
   	self:BlockMenuItems()
 end
 
-local lastKeyDown, lastKeyDownAt
+local lastKeyDown, lastKeyDownAt, stickyEdit
 
 
 -- We can't actually take over the LAS in a straighforward manner. If the LAS contains actions,
@@ -57,11 +59,11 @@ function LAS:BlockMenuItems()
 	self:RawHook(Remodel, "OnHousingButtonRemodel")
 	self:RawHook(Decorate, "OnHousingButtonOpenCrate")
 	self:RawHook(ListWindow, "OnHousingButtonList")
-	self:RawHook(HousingLib, "SetEditMode")
+	self:Hook(HousingLib, "SetEditMode")
 	self:RawHook(GameLib, "SupportStuck")
 end
 
-function LAS:OnHousingButtonLandscape(...)
+function LAS:OnHousingButtonLandscape(...)	
 	if lastKeyDown == 49 and os.time() - lastKeyDownAt < timeLimit then return end
 	return self.hooks[Landscape].OnHousingButtonLandscape(Landscape, ...)
 end
@@ -71,9 +73,10 @@ function LAS:OnHousingButtonRemodel(...)
 	return self.hooks[Remodel].OnHousingButtonRemodel(Remodel, ...)
 end
 
-function LAS:OnHousingButtonOpenCrate(bIsVendor)
+function LAS:OnHousingButtonOpenCrate(...)
+	local _, bIsVendor = ...
 	if ((not bIsVendor and lastKeyDown == 51) or (bIsVendor and lastKeyDown == 52)) and os.time() - lastKeyDownAt < timeLimit then return end
-	return self.hooks[Decorate].OnHousingButtonOpenCrate(Decorate, bIsVendor)
+	return (self.hooks[Decorate]).OnHousingButtonOpenCrate(...)
 end
 
 function LAS:OnHousingButtonList()
@@ -81,9 +84,11 @@ function LAS:OnHousingButtonList()
 	return self.hooks[ListWindow].OnHousingButtonList(ListWindow)
 end
 
-function LAS:SetEditMode(bEdit)
-	if lastKeyDown == 54 and os.time() - lastKeydownAt < timeLimit then return end
-	return self.hooks[HousingLib].SetEditMode(bEdit)
+function LAS:SetEditMode(...)	
+	stickyEdit = ...
+	self.edit = ...
+--	if lastKeyDown == 54 and os.time() - lastKeydownAt < timeLimit then return end
+--	return self.hooks[HousingLib].SetEditMode(...)
 end
 
 function LAS:SupportStuck(...)
@@ -93,15 +98,21 @@ end
 
 
 function LAS:SystemKeyDown(...)
-	local name, strKeyName = ...
+	local name, strKeyName = ...	
+	lastKeyDown = strKeyName
+	if tonumber(strKeyName) < 57 and tonumber(strKeyName) > 48 then		
+		lastKeyDownAt = os.time()		
+	end
 	self.glog:debug(strKeyName)
-	if tonumber(strKeyName) < 57 and tonumber(strKeyName) > 48 then
-		lastKeyDown = strKeyName
-		lastKeyDownAt = os.time()
+
+	if strKeyName == 54 then -- sticky Edit key
+		HousingLib.SetEditMode(stickyEdit)
 	end
 end
 
-
+function LAS:WindowKeyDown(...)
+	self.debug(...)
+end
 
 function LAS:OnSlashCommand(cmd, argv)
 	local args = {}
