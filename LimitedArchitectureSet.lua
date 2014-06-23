@@ -15,6 +15,10 @@ LimitedArchitectureSet = Apollo.GetPackage("Gemini:Addon-1.1").tPackage:NewAddon
 
 local LAS = LimitedArchitectureSet
 
+local Landscape, Remodel, ListWindow, Decorate
+
+local timeLimit = 1
+
 function LAS:OnInitialize()
 	local GeminiLogging = Apollo.GetPackage("Gemini:Logging-1.2").tPackage
   	self.glog = GeminiLogging:GetLogger({ level = GeminiLogging.DEBUG, pattern = "%d %n %c %l - %m", appender = "GeminiConsole" })
@@ -24,10 +28,13 @@ function LAS:OnInitialize()
   	self.HousingButtons = {}
   	self.HousingButtons.Landscape = Apollo.GetAddon("HousingLandscape")	
   	self.HousingButtons.Remodel = Apollo.GetAddon("HousingRemodel")
-  	self.HousingButtons.Crate = Apollo.GetAddon("HousingListWindow")
-  	self.HousingButtons.Decorate = Apollo.GetAddon("Housing")
   	self.HousingButtons.List = Apollo.GetAddon("HousingListWindow")
+  	self.HousingButtons.Decorate = Apollo.GetAddon("Housing")
 
+  	Landscape = self.HousingButtons.Landscape
+  	Remodel = self.HousingButtons.Remodel
+  	ListWindow = self.HousingButtons.List 
+  	Decorate = self.HousingButtons.Decorate
 
   	SendVarToRover("LAS", self)
 
@@ -39,15 +46,50 @@ end
 local lastKeyDown, lastKeyDownAt
 
 
+-- We can't actually take over the LAS in a straighforward manner. If the LAS contains actions,
+-- then they will fire, if the 1-8 key is hit. If, however, we temporarily clear the LAS, hitting
+-- 1-8 will actually activate ctrl-1 to ctrl-8, which is all the housing guff. And we don't 
+-- want that either. So, we put buffers into all the commands, to check if we've just hit the 
+-- 1-8 keys, and if so, ignore doing the ctrl-1 to ctrl-8 items.
+
 function LAS:BlockMenuItems()
-	self:RawHook(self.HousingButtons.Landscape, "OnHousingButtonLandscape")
+	self:RawHook(Landscape, "OnHousingButtonLandscape")
+	self:RawHook(Remodel, "OnHousingButtonRemodel")
+	self:RawHook(Decorate, "OnHousingButtonOpenCrate")
+	self:RawHook(ListWindow, "OnHousingButtonList")
+	self:RawHook(HousingLib, "SetEditMode")
+	self:RawHook(GameLib, "SupportStuck")
 end
 
 function LAS:OnHousingButtonLandscape(...)
-	if lastKeyDown == 49 and os.time() - lastKeyDownAt < 1 then return end
-	self.hooks[self.HousingButtons.Landscape].OnHousingButtonLandscape(...)
+	if lastKeyDown == 49 and os.time() - lastKeyDownAt < timeLimit then return end
+	return self.hooks[Landscape].OnHousingButtonLandscape(Landscape, ...)
 end
 
+function LAS:OnHousingButtonRemodel(...)
+	if lastKeyDown == 50 and os.time() - lastKeyDownAt < timeLimit then return end
+	return self.hooks[Remodel].OnHousingButtonRemodel(Remodel, ...)
+end
+
+function LAS:OnHousingButtonOpenCrate(bIsVendor)
+	if ((not bIsVendor and lastKeyDown == 51) or (bIsVendor and lastKeyDown == 52)) and os.time() - lastKeyDownAt < timeLimit then return end
+	return self.hooks[Decorate].OnHousingButtonOpenCrate(Decorate, bIsVendor)
+end
+
+function LAS:OnHousingButtonList()
+	if lastKeyDown == 53 and os.time() - lastKeyDownAt < timeLimit then return end
+	return self.hooks[ListWindow].OnHousingButtonList(ListWindow)
+end
+
+function LAS:SetEditMode(bEdit)
+	if lastKeyDown == 54 and os.time() - lastKeydownAt < timeLimit then return end
+	return self.hooks[HousingLib].SetEditMode(bEdit)
+end
+
+function LAS:SupportStuck(...)
+	if lastKeyDown == 55 and os.time() - lastKeyDownAt < timeLimit then return end
+	return self.hooks[GameLib].SupportStuck(...)
+end
 
 
 function LAS:SystemKeyDown(...)
