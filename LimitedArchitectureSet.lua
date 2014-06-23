@@ -17,8 +17,6 @@ local LAS = LimitedArchitectureSet
 
 local Landscape, Remodel, ListWindow, Decorate
 
-local timeLimit = 2
-
 function LAS:OnInitialize()
 	local GeminiLogging = Apollo.GetPackage("Gemini:Logging-1.2").tPackage
   	self.glog = GeminiLogging:GetLogger({ level = GeminiLogging.DEBUG, pattern = "%d %n %c %l - %m", appender = "GeminiConsole" })
@@ -42,30 +40,9 @@ function LAS:OnInitialize()
   	self:RegisterEvent("SystemKeyDown")
 end
 
-local lastKeyDown, lastKeyDownAt, stickyEdit
-
-
-
-
-
 function LAS:SystemKeyDown(...)
-	local name, strKeyName = ...	
-	lastKeyDown = strKeyName
-	if tonumber(strKeyName) < 57 and tonumber(strKeyName) > 48 then		
-		lastKeyDownAt = os.time()		
-	end
-	self.glog:debug(strKeyName)
-
-	if strKeyName == 54 then -- sticky Edit key
-		HousingLib.SetEditMode(stickyEdit)
-	end
+	-- Handle stuff here
 end
-
-function LAS:WindowKeyDown(...)
-	self.debug(...)
-end
-
-
 
 
 function LAS:OnSlashCommand(cmd, argv)
