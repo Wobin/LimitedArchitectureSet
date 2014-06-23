@@ -26,7 +26,7 @@ function LAS:OnInitialize()
   	self.HousingButtons = {}
   	self.HousingButtons.Landscape = Apollo.GetAddon("HousingLandscape")	
   	self.HousingButtons.Remodel = Apollo.GetAddon("HousingRemodel")
-  	self.HousingButtons.List = Apollo.GetAddon("HousingListWindow")
+  	self.HousingButtons.List = Apollo.GetAddon("HousingList")
   	self.HousingButtons.Decorate = Apollo.GetAddon("Housing")
   	self.HousingActionBar = Apollo.GetAddon("ActionBarShortcut")
 
